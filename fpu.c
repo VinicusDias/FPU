@@ -109,23 +109,59 @@ unionfloat somaValores(unionfloat float1, unionfloat float2, const int troca) {
 
 }
 
+unionfloat substracaoValores(unionfloat float1, unionfloat float2, const int troca) {
+
+    const int SINAIS_IGUAIS= float1.field.sinal == float2.field.sinal;
+    int complemento = 0;
+    unionfloat resultado = float1;
+    unsigned int resultadoMantissa,
+            mantissa1 = float1.field.mantissa + BIT_FANTASMA,
+            mantissa2 = float2.field.mantissa + BIT_FANTASMA;
+    int short vaiUm,
+            diferencaExpoente = float1.field.expoente - float2.field.expoente;
+
+
+    // Substitui valor2 pelo seu complemento de dois caso os sinais sejam iguais
+    if (SINAIS_IGUAIS) {
+        mantissa2 = ~(mantissa2) + 1;       
+    }
+
+    // Coloca os dois valores sobre o mesmo expoente
+    if (diferencaExpoente > 0)
+        mantissa2 = mantissa2 >> diferencaExpoente;
+
+    // Soma mantissa
+    resultadoMantissa = mantissa1 + mantissa2;
+
+    // Verifica overflow
+    vaiUm = getBit(resultadoMantissa, 25);
+
+    // Ajusta em caso do resultado negativo
+    if (SINAIS_IGUAIS && diferencaExpoente == 0 && (resultadoMantissa & BIT_FANTASMA) && vaiUm) {
+        resultadoMantissa = ~(resultadoMantissa) + 1;
+        vaiUm = getBit(resultadoMantissa, 25);
+        complemento = 1;
+    }
+
+    //Normaliza
+    resultado = normaliza(resultado, resultadoMantissa, vaiUm);
+    resultado.field.sinal = computaSinal(troca, complemento, float1.field.sinal, float2.field.sinal);
+
+    return resultado;
+}
+
 int main() {
 
     unionfloat float1, float2, resultado;
-
-    //    printf("Primeiro valor: ");
-    //    scanf("%f", &float1.f);
-    //    printf("Segundo valor: ");
-    //    scanf("%f", &float2.f);
-
-    float1.f = 3;
-    float2.f = 3.1;
+    
+    float1.f = 0.3;
+    float2.f = -3;
 
     // Verifica qual possui maior expoente e inverte caso necessario
     if (float1.field.expoente >= float2.field.expoente)
-        resultado = somaValores(float1, float2, 0);
+        resultado = substracaoValores(float1, float2, 0);
     else
-        resultado = somaValores(float2, float1, 1);
+        resultado = substracaoValores(float2, float1, 1);
     
     printf("Numero reconstituido: %f\n", pow(-1, (resultado.field.sinal)) * (1.0 + resultado.field.mantissa / pow(2, 23)) * pow(2, (resultado.field.expoente - 127)));
     return 0;
